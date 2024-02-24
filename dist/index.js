@@ -1,27 +1,53 @@
 "use strict";
-const express = require("express");
-const { createProxyMiddleware } = require("http-proxy-middleware");
-const cors = require("cors");
-const app = express();
-app.use(cors());
-app.use(express.json());
-// Proxy options for each route
-const proxyOptionsCustomer = {
-    target: "http://localhost:8001",
-    changeOrigin: true,
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-const proxyOptionsProduct = {
-    target: "http://localhost:8002",
-    changeOrigin: true,
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const http_proxy_middleware_1 = require("http-proxy-middleware");
+const cors_1 = __importDefault(require("cors"));
+const app = (0, express_1.default)();
+const PORT = 8005;
+app.use((0, cors_1.default)({
+    origin: "http://localhost:8005",
+    methods: ["POST", "GET", "PATCH", "DELETE"],
+    optionsSuccessStatus: 200,
+}));
+// Body parsing middleware
+app.use(express_1.default.json());
+// Proxy options for each microservice
+const proxyOptions = {
+    "/customer": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+    },
+    "/product": {
+        target: "http://localhost:8002",
+        changeOrigin: true,
+    },
+    "/shopping": {
+        target: "http://localhost:8003",
+        changeOrigin: true,
+    },
 };
-const proxyOptionsShopping = {
-    target: "http://localhost:8003",
-    changeOrigin: true,
+// Create proxy middleware for each microservice
+const createProxyMiddlewareForService = (servicePath, options) => {
+    return (0, http_proxy_middleware_1.createProxyMiddleware)(servicePath, options);
 };
-// Proxy routes
-app.use("/customer", createProxyMiddleware(proxyOptionsCustomer));
-app.use("/product", createProxyMiddleware(proxyOptionsProduct));
-app.use("/shopping", createProxyMiddleware(proxyOptionsShopping));
-app.listen(8005, () => {
-    console.log("Gateway Microservice Listening to Port 8005");
+// Use proxy middleware for each microservice
+for (const [path, options] of Object.entries(proxyOptions)) {
+    app.use(path, createProxyMiddlewareForService(path, options));
+}
+// Error handling middleware for 404 Not Found
+app.use((req, res) => {
+    res.status(404).json({ message: "Not Found" });
+});
+// Global error handling middleware
+app.use((err, req, res, next) => {
+    console.error("Global Error Handler:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+});
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Gateway Microservice Listening on Port ${PORT}`);
 });
