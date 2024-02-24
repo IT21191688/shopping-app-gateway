@@ -17,14 +17,20 @@ app.use(
   })
 );
 
-// Body parsing middleware
 app.use(express.json());
 
-// Proxy options for each microservice
 const proxyOptions: Record<string, Options> = {
   "/customer": {
     target: "http://localhost:8001",
     changeOrigin: true,
+    onProxyReq: (proxyReq, req, res) => {
+      if (req.body) {
+        const bodyData = JSON.stringify(req.body);
+        proxyReq.setHeader("Content-Type", "application/json");
+        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+        proxyReq.write(bodyData);
+      }
+    },
   },
   "/product": {
     target: "http://localhost:8002",

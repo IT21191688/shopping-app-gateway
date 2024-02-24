@@ -13,13 +13,19 @@ app.use((0, cors_1.default)({
     methods: ["POST", "GET", "PATCH", "DELETE"],
     optionsSuccessStatus: 200,
 }));
-// Body parsing middleware
 app.use(express_1.default.json());
-// Proxy options for each microservice
 const proxyOptions = {
     "/customer": {
         target: "http://localhost:8001",
         changeOrigin: true,
+        onProxyReq: (proxyReq, req, res) => {
+            if (req.body) {
+                const bodyData = JSON.stringify(req.body);
+                proxyReq.setHeader("Content-Type", "application/json");
+                proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+                proxyReq.write(bodyData);
+            }
+        },
     },
     "/product": {
         target: "http://localhost:8002",
